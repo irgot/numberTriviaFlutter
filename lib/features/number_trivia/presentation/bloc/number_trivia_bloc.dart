@@ -8,6 +8,11 @@ import 'package:tdd_clean_architecture_reso/features/number_trivia/domain/usecas
 part 'number_trivia_event.dart';
 part 'number_trivia_state.dart';
 
+const String serverFailureMessage = 'Server Failure';
+const String cacheFailureMessage = 'Cache Failure';
+const String invalidInputFailureMessage =
+    'Invalid Input - The number must be a positive  integer or zero.';
+
 class NumberTriviaBloc extends Bloc<NumberTriviaEvent, NumberTriviaState> {
   final GetConcreteNumberTriviaUsecase getConcreteNumberTriviaUsecase;
   final GetRandomNumberTriviaUsecase getRandomNumberTriviaUsecase;
@@ -19,7 +24,13 @@ class NumberTriviaBloc extends Bloc<NumberTriviaEvent, NumberTriviaState> {
       required this.inputConverter})
       : super(Empty()) {
     on<NumberTriviaEvent>((event, emit) {
-      // TODO: implement event handler
+      if (event is GetTriviaForConcreteNumber) {
+        final inputEither =
+            inputConverter.StringToUnsignedInt(event.numberString);
+        inputEither.fold((failure) {
+          emit(const Error(errorMessage: invalidInputFailureMessage));
+        }, (number) => emit);
+      }
     });
   }
 }
