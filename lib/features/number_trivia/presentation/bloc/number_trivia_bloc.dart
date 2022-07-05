@@ -1,5 +1,9 @@
+import 'dart:developer';
+
 import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
+import 'package:tdd_clean_architecture_reso/core/error/failures.dart';
+import 'package:tdd_clean_architecture_reso/core/usecases/usecase.dart';
 import 'package:tdd_clean_architecture_reso/core/util/input_converter.dart';
 import 'package:tdd_clean_architecture_reso/features/number_trivia/domain/entities/number_trivia_entity.dart';
 import 'package:tdd_clean_architecture_reso/features/number_trivia/domain/usecases/get_concrete_number_trivia_usecase.dart';
@@ -23,14 +27,42 @@ class NumberTriviaBloc extends Bloc<NumberTriviaEvent, NumberTriviaState> {
       required this.getRandomNumberTriviaUsecase,
       required this.inputConverter})
       : super(Empty()) {
-    on<NumberTriviaEvent>((event, emit) {
+    on<NumberTriviaEvent>((event, emit) async {
       if (event is GetTriviaForConcreteNumber) {
         final inputEither =
             inputConverter.StringToUnsignedInt(event.numberString);
         inputEither.fold((failure) {
-          emit(const Error(errorMessage: invalidInputFailureMessage));
-        }, (number) => emit);
+          emit(Error(errorMessage: _mapFailureToMessage(failure)));
+        }, (number) async {
+          emit(Loading());
+          final failureOrTrivia =
+              await getConcreteNumberTriviaUsecase.call(Params(number: number));
+          emit.isDone;
+          emit(failureOrTrivia.fold(
+              (failure) => Error(errorMessage: _mapFailureToMessage(failure)),
+              (numberTrivia) => Loaded(triviaEntity: numberTrivia)));
+        });
+      }
+      if (event is GetTriviaForRandomNumber) {
+        emit(Loading());
+        final failureOrTrivia = await getRandomNumberTriviaUsecase(NoParams());
+        emit(failureOrTrivia.fold(
+            (failure) => Error(errorMessage: _mapFailureToMessage(failure)),
+            (numberTrivia) => Loaded(triviaEntity: numberTrivia)));
       }
     });
+  }
+
+  String _mapFailureToMessage(Failure failure) {
+    switch (failure.runtimeType) {
+      case InvalidInputFailure:
+        return invalidInputFailureMessage;
+      case ServerFailure:
+        return serverFailureMessage;
+      case CacheFailure:
+        return cacheFailureMessage;
+      default:
+        return 'Unexpected error';
+    }
   }
 }
