@@ -31,13 +31,13 @@ class NumberTriviaBloc extends Bloc<NumberTriviaEvent, NumberTriviaState> {
       if (event is GetTriviaForConcreteNumber) {
         final inputEither =
             inputConverter.StringToUnsignedInt(event.numberString);
-        inputEither.fold((failure) {
+        await inputEither.fold((failure) {
           emit(Error(errorMessage: _mapFailureToMessage(failure)));
         }, (number) async {
           emit(Loading());
           final failureOrTrivia =
-              await getConcreteNumberTriviaUsecase.call(Params(number: number));
-          emit.isDone;
+              await getConcreteNumberTriviaUsecase(Params(number: number));
+
           emit(failureOrTrivia.fold(
               (failure) => Error(errorMessage: _mapFailureToMessage(failure)),
               (numberTrivia) => Loaded(triviaEntity: numberTrivia)));
